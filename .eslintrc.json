@@ -33,6 +33,7 @@
       "global-require": "off",
       "object-curly-spacing": ["error", "always"],
       "no-self-compare": "off",
-      "no-plusplus": "off"
+      "no-plusplus": "off",
+      "eol-last": "error"
     }
 }
