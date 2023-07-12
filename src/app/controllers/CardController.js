@@ -118,9 +118,7 @@ router.get('/studyables', async (req, res) => {
         cards = await card.splittedCards(null, languageid)
       }
       const allCards = await card.splittedCards(null, languageid)
-      const newCardsStudiedToday = allCards.filter((card) => {
-        return card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1
-      }).length
+      const newCardsStudiedToday = allCards.filter((card) => card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1).length
       const cardsFilteredByDate = cards.filter((card) => {
         if (card.interval === 1 || (card.consecutiveResponses || 0 > 0)) {
           return true
@@ -128,7 +126,8 @@ router.get('/studyables', async (req, res) => {
         const intervalInMilliseconds = (card.interval || 1) * 60 * 1000
         const reviewdAtDate = new Date(card.reviewedAt || Date.now())
         const nextReviewTimestamp = reviewdAtDate.getTime() + intervalInMilliseconds
-        return nextReviewTimestamp <= Date.now()
+        const nowTimestamp = Date.now()
+        return nextReviewTimestamp <= nowTimestamp || (new Date(nextReviewTimestamp)).toDateString() === (new Date(nowTimestamp)).toDateString()
       })
       const cardsFiltered = {
         newCards: cardsFilteredByDate.filter((card) => card.interval === 1).slice(0, 24 - newCardsStudiedToday < 0 ? 0 : 24 - newCardsStudiedToday),
@@ -189,11 +188,10 @@ router.get('/category-cards-quantity', async (req, res) => {
         const intervalInMilliseconds = (card.interval || 1) * 60 * 1000
         const reviewdAtDate = new Date(card.reviewedAt || Date.now())
         const nextReviewTimestamp = reviewdAtDate.getTime() + intervalInMilliseconds
-        return nextReviewTimestamp <= Date.now()
+        const nowTimestamp = Date.now()
+        return nextReviewTimestamp <= nowTimestamp || (new Date(nextReviewTimestamp)).toDateString() === (new Date(nowTimestamp)).toDateString()
       }
-      const newCardsStudiedToday = cards.filter((card) => {
-        return card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1
-      }).length
+      const newCardsStudiedToday = cards.filter((card) => card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1).length
       const newCardsLength = (_categoryId) => cards.filter((card) => {
         return card.interval === 1 && filterCardByDateAndCategory(card, _categoryId)
       }).slice(0, 24 - newCardsStudiedToday < 0 ? 0 : 24 - newCardsStudiedToday).length
