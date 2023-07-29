@@ -21,10 +21,6 @@ const UserSchema = new mongoose.Schema({
     required: true,
     select: false
   },
-  favorites: {
-    type: Array,
-    default: []
-  },
   createdAt: {
     type: Date,
     default: Date.now
