@@ -14,7 +14,7 @@ const CardSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  language: {
+  deck: {
     type: String,
     required: true
   },
@@ -39,26 +39,26 @@ const CardSchema = new mongoose.Schema({
   }
 })
 
-CardSchema.methods.splittedCards = async function (categoryid, languageid) {
+CardSchema.methods.splittedCards = async function (categoryid, deckid) {
   let cards = []
-  if (categoryid && languageid) {
-    const language = await this.model('languages').findOne({ id: languageid })
-    const categories = getSubCategories(categoryid, language.categories)
+  if (categoryid && deckid) {
+    const deck = await this.model('decks').findOne({ id: deckid })
+    const categories = getSubCategories(categoryid, deck.categories)
     cards = await this.model('Card').find({
       category: {
         $in: categories
       },
-      language: languageid
+      deck: deckid
     })
-  } else if (languageid) {
-    cards = await this.model('Card').find({ language: languageid })
+  } else if (deckid) {
+    cards = await this.model('Card').find({ deck: deckid })
   } else {
     await this.model('Card').find()
   }
   const allCards = cards.reduce((acumulator, currentValue) => {
     const cardBase = {
       id: currentValue.id,
-      language: currentValue.language,
+      deck: currentValue.deck,
       template: currentValue.template,
       category: currentValue.category,
       notes: currentValue.notes
