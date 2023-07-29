@@ -1,21 +1,21 @@
 const uniqid = require('uniqid')
 
 const router = require('express').Router()
-const Language = require('../models/Language')
+const Deck = require('../models/Deck')
 const auth = require('../middlewares/auth')
 
 router.get('/', auth(), async (req, res) => {
   const { id } = req.query
   try {
     if (id) {
-      const language = await Language.findOne({ id })
-      if (!language) {
+      const deck = await Deck.findOne({ id })
+      if (!deck) {
         return res.status(404).send()
       }
-      return res.send(language)
+      return res.send(deck)
     }
-    const languages = await Language.find()
-    return res.send(languages)
+    const decks = await Deck.find()
+    return res.send(decks)
   } catch (e) {
     console.log(e)
     return res.status(500).send()
@@ -23,14 +23,14 @@ router.get('/', auth(), async (req, res) => {
 })
 
 router.post('/', auth(), async (req, res) => {
-  const id = uniqid('language-')
-  const { language, name } = req.body
+  const id = uniqid('deck-')
+  const { name } = req.body
   try {
     const user = req.user._id
-    const lang = await Language.create({
-      id, name, language, user
+    const deck = await Deck.create({
+      id, name, user
     })
-    return res.send(lang)
+    return res.send(deck)
   } catch (e) {
     console.log(e)
     return res.status(500).send()
@@ -39,11 +39,11 @@ router.post('/', auth(), async (req, res) => {
 router.patch('/', auth(), async (req, res) => {
   try {
     console.log(req.body.categories)
-    const language = await Language.findOneAndUpdate({ id: req.body.id }, { name: req.body.name, categories: req.body.categories })
-    return res.send(language)
+    const deck = await Deck.findOneAndUpdate({ id: req.body.id }, { name: req.body.name, categories: req.body.categories })
+    return res.send(deck)
   } catch (e) {
     console.log(e)
     return res.status(500).send()
   }
 })
-module.exports = (app) => app.use('/languages', router)
+module.exports = (app) => app.use('/decks', router)

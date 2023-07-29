@@ -1,7 +1,7 @@
 const router = require('express').Router()
 const auth = require('../middlewares/auth')
 const Card = require('../models/Card')
-const Language = require('../models/Language')
+const Deck = require('../models/Deck')
 const getSubCategories = require('../plugins/getSubCategories')
 
 const card = new Card()
@@ -39,7 +39,7 @@ router.post('/', auth(), async (req, res) => {
       ...cardSRSPreset
     }
     const card = await Card.create({
-      language: req.body.language,
+      deck: req.body.deck,
       category: req.body.category,
       user: req.user._id,
       target: targetCard,
@@ -54,7 +54,7 @@ router.post('/', auth(), async (req, res) => {
 })
 
 router.get('/', async (req, res) => {
-  const { id, categoryid, languageid } = req.query
+  const { id, categoryid, deckid } = req.query
   try {
     if (id) {
       const suffix = id.split('-')?.pop()
@@ -73,10 +73,10 @@ router.get('/', async (req, res) => {
         return res.status(404).send()
       }
     }
-    if (categoryid || languageid) {
-      const language = await Language.findOne({ id: languageid })
-      if (language) {
-        const cards = await card.splittedCards(categoryid, languageid)
+    if (categoryid || deckid) {
+      const deck = await Deck.findOne({ id: deckid })
+      if (deck) {
+        const cards = await card.splittedCards(categoryid, deckid)
         return res.send(cards)
       }
       return res.status(404).send()
@@ -90,7 +90,7 @@ router.get('/', async (req, res) => {
 })
 
 router.get('/studyables', async (req, res) => {
-  const { id, categoryid, languageid } = req.query
+  const { id, categoryid, deckid } = req.query
   try {
     if (id) {
       const suffix = id.split('-')?.pop()
@@ -110,14 +110,14 @@ router.get('/studyables', async (req, res) => {
       }
     }
 
-    const cardsFiltered = async (categoryid, languageid) => {
+    const cardsFiltered = async (categoryid, deckid) => {
       let cards = []
-      if (categoryid && languageid) {
-        cards = await card.splittedCards(categoryid, languageid)
+      if (categoryid && deckid) {
+        cards = await card.splittedCards(categoryid, deckid)
       } else {
-        cards = await card.splittedCards(null, languageid)
+        cards = await card.splittedCards(null, deckid)
       }
-      const allCards = await card.splittedCards(null, languageid)
+      const allCards = await card.splittedCards(null, deckid)
       const newCardsStudiedToday = allCards.filter((card) => card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1).length
       const cardsFilteredByDate = cards.filter((card) => {
         if (card.interval === 1 || (card.consecutiveResponses || 0 > 0)) {
@@ -137,14 +137,14 @@ router.get('/studyables', async (req, res) => {
       return shuffleArray([...cardsFiltered.newCards, ...cardsFiltered.learningCards, ...cardsFiltered.dueCards])
     }
 
-    if (categoryid && languageid) {
-      const language = await Language.findOne({ id: languageid })
-      if (language) {
-        return res.send(await cardsFiltered(categoryid, languageid))
+    if (categoryid && deckid) {
+      const deck = await Deck.findOne({ id: deckid })
+      if (deck) {
+        return res.send(await cardsFiltered(categoryid, deckid))
       }
       return res.status(404).send()
     }
-    return res.send(await cardsFiltered(null, languageid))
+    return res.send(await cardsFiltered(null, deckid))
   } catch (e) {
     console.log(e)
     return res.status(500).send()
@@ -152,12 +152,12 @@ router.get('/studyables', async (req, res) => {
 })
 
 router.get('/category-cards-quantity', async (req, res) => {
-  const { categoryid, languageid } = req.query
+  const { categoryid, deckid } = req.query
   try {
     if (categoryid) {
-      const language = await Language.findOne({ id: languageid })
-      if (language) {
-        const cards = await card.splittedCards(categoryid, languageid)
+      const deck = await Deck.findOne({ id: deckid })
+      if (deck) {
+        const cards = await card.splittedCards(categoryid, deckid)
         const newCards = cards.filter((card) => card.interval === 1)
         const learningCards = cards.filter((card) => card.interval > 1 && card.interval <= 60 * 24 * 7)
         const dueCards = cards.filter((card) => card.interval > 60 * 24 * 7)
@@ -170,15 +170,15 @@ router.get('/category-cards-quantity', async (req, res) => {
       }
     } else {
       const allCategories = []
-      const language = await Language.findOne({ id: languageid })
-      for (const category of language.categories) {
-        const categories = getSubCategories(category.id, language.categories)
+      const deck = await Deck.findOne({ id: deckid })
+      for (const category of deck.categories) {
+        const categories = getSubCategories(category.id, deck.categories)
         allCategories.push(...categories)
       }
-      const cards = await card.splittedCards(null, languageid)
+      const cards = await card.splittedCards(null, deckid)
 
       const filterCardByDateAndCategory = (card, category) => {
-        const subcategories = getSubCategories(category, language.categories)
+        const subcategories = getSubCategories(category, deck.categories)
         if (!subcategories.includes(card.category)) {
           return false
         }
@@ -192,9 +192,7 @@ router.get('/category-cards-quantity', async (req, res) => {
         return nextReviewTimestamp <= nowTimestamp || (new Date(nextReviewTimestamp)).toDateString() === (new Date(nowTimestamp)).toDateString()
       }
       const newCardsStudiedToday = cards.filter((card) => card.interval === 1440 && card.reviewedAt.toDateString() === (new Date()).toDateString() && card.correctResponses === 1).length
-      const newCardsLength = (_categoryId) => cards.filter((card) => {
-        return card.interval === 1 && filterCardByDateAndCategory(card, _categoryId)
-      }).slice(0, 24 - newCardsStudiedToday < 0 ? 0 : 24 - newCardsStudiedToday).length
+      const newCardsLength = (_categoryId) => cards.filter((card) => card.interval === 1 && filterCardByDateAndCategory(card, _categoryId)).slice(0, 24 - newCardsStudiedToday < 0 ? 0 : 24 - newCardsStudiedToday).length
       const cardsQuantity = allCategories.map((_categoryId) => ({
         category: _categoryId,
         newQuantity: newCardsLength(_categoryId),
@@ -216,9 +214,9 @@ router.get('/category-cards-quantity', async (req, res) => {
 })
 
 router.get('/words', async (req, res) => {
-  const { languageid } = req.query
+  const { deckid } = req.query
   try {
-    const cards = await Card.find({ language: languageid })
+    const cards = await Card.find({ deck: deckid })
     const words = cards.map((card) => card.target).map((card) => card.front).join(', ')
     return res.send(words)
   } catch (e) {
